@@ -29,5 +29,3 @@ while start_date <= end_date:
     clean_data = pd.json_normalize(test_result, record_path=['data', 'intraday'], meta=[['data', 'name'], ['data', 'symbol']])
     df.append(clean_data)
     start_date += delta
-
-path=r'C:\Users\hvill\Destop\'
