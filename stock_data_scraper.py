@@ -19,10 +19,13 @@ access_key = '?access_key=087159d85393bf79ec34aea670edf7fe'
 
 
 df = pd.DataFrame()
+
 interval = '1min'
 
 start_date = date(2021, 6, 1)
+
 end_date = date(2021, 6, 30)
+
 delta = timedelta(days=1)
 
 while start_date <= end_date:
