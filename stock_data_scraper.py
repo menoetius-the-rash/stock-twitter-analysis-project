@@ -4,9 +4,6 @@ import pandas as pd
 from datetime import date, timedelta
 
 '''
-params = {
-  'access_key': '087159d85393bf79ec34aea670edf7fe'
-}
 Your dedicated access key is: 77HAARG0F1BQY2GS
 api_result = requests.get('https://api.marketstack.com/v1/tickers/', stock, '/intraday/' , params)
 
@@ -15,7 +12,7 @@ api_response = api_result.json()
 df = pd.json_normalize()
 '''
 stock = 'GME'
-access_key = '?access_key=087159d85393bf79ec34aea670edf7fe'
+
 
 
 df = pd.DataFrame()
