@@ -1,40 +1,39 @@
+from time import sleep
 import requests
+import config
+import csv
 import os
 import pandas as pd
 from datetime import date, timedelta
 
-'''
+stocklist = ['NVDA', 'AHT', 'AAPL', 'MSFT', 'AMZN', 
+            'BNGO', 'CCIV', 'GME', 'JNJ', 'BNTX', 
+            'NEGG', 'OCGN', 'UONE', 'AAPL', 'BYND', 
+            'MRNA', 'PFE', 'TSLA', 'ORCL', 'PLTR', 
+            'FB', 'SPY', 'BABA', 'NIO', 'PZZA', 
+            'ABNB', 'VIAC', 'AMD', 'TWTR', 'NKE', 
+            'SQ', 'DIS', 'TSM', 'NOK', 'SPCE', 
+            'F', 'WISH', 'XPEV', 'ETSY', 'DKNG', 
+            'RKT', 'BB', 'XOM', 'GE', 'ADMP', 
+            'AEHR', 'CREX', 'CYRN', 'LPTH', 'WTER']
 
-api_result = requests.get('https://api.marketstack.com/v1/tickers/', stock, '/intraday/' , params)
+stocklist2 = ['AAPL', 'BNTX']
+location = config.location
+counter = 1
 
-api_response = api_result.json()
-
-df = pd.json_normalize()
-'''
-stock = 'GME'
-
-
-
-df = pd.DataFrame()
-
-interval = '1min'
-
-start_date = date(2021, 6, 1)
-
-end_date = date(2021, 6, 30)
-
-delta = timedelta(days=1)
-
-while start_date <= end_date:
-    date_set = start_date.strftime("%Y-%m-%d")
-    url = 'http://api.marketstack.com/v1/intraday/' + access_key + '/' + stock  + date_set + '/intraday' +  + '&interval=' +  interval + 
-    print(url)
-    test_result = requests.get(url)
-    clean_data =  pd.json_normalize(test_result, record_path=['data', 'intraday'], meta=[['data', 'name'], ['data', 'symbol']])
-    df.append(clean_data)
-    start_date += delta
-
-location =r'C:\Users\Jin\Dropbox\2020 Course\Modules\Project'
-df.to_csv(os.path.join(location,r'GME.csv'))
-
-
+for stock in stocklist:
+  test1 = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol=' + stock +'&interval=1min&slice=year1month1&apikey=' + config.api_key
+  test2 = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol='+ stock +'&interval=1min&slice=year1month2&apikey=' + config.api_key
+  CSV_URL1 = test1
+  CSV_URL2 = test2
+  df1 = pd.read_csv(CSV_URL1)
+  df2 = pd.read_csv(CSV_URL2)
+  # Creating a dataframe from the above CSV
+  stockmonth_df1 = pd.DataFrame(df1, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
+  stockmonth_df2 = pd.DataFrame(df2, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
+  df1.append(df2)
+  stockFileName = stock + '.csv'
+  df1.to_csv(os.path.join(location,stockFileName), index=False)
+  if counter % 2 == 0:
+    sleep(60)
+  counter += 1

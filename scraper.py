@@ -31,8 +31,8 @@ maxTweets = 10000
 
 # Creating list to append tweet data to
 tweets_list2 = []
-stocklist = ['$NVDA', '$AHT', '$ALPP', '$MSFT', '$AMZN', 
-            '$BNGO', '$CCIV', '$GME', '$JNJ', '$MJWL', 
+stocklist = ['$NVDA', '$AHT', '$AAPL', '$MSFT', '$AMZN', 
+            '$BNGO', '$CCIV', '$GME', '$JNJ', '$BNTX', 
             '$NEGG', '$OCGN', '$UONE', '$AAPL', '$BYND', 
             '$MRNA', '$PFE', '$TSLA', '$ORCL', '$PLTR', 
             '$FB', '$SPY', '$BABA', '$NIO', '$PZZA', 
@@ -41,6 +41,8 @@ stocklist = ['$NVDA', '$AHT', '$ALPP', '$MSFT', '$AMZN',
             '$F', '$WISH', '$XPEV', '$ETSY', '$DKNG', 
             '$RKT', '$BB', '$XOM', '$GE', '$ADMP', 
             '$AEHR', '$CREX', '$CYRN', '$LPTH', '$WTER']
+
+stocklist2 = ['$AAPL', '$BNTX']
 
 # Using TwitterSearchScraper to scrape data and append tweets to list
 timeframe = ' since:2021-06-01 until:2021-07-01'
@@ -57,4 +59,4 @@ tweets_df2 = pd.DataFrame(tweets_list2, columns=['Datetime', 'Tweet_Id', 'Stock'
 # Display first 5 entries from dataframe
 tweets_df2.head()
 
-tweets_df2.to_csv('Test1.csv', sep=',', index=False)
+tweets_df2.to_csv('Test2.csv', sep=',', index=False)
