@@ -2,7 +2,7 @@ import snscrape.modules.twitter as sntwitter
 import pandas as pd
 
 # Setting variables to be used below
-maxTweets = 10000
+maximumTweets = 10000
 
 # Creating list to append tweet data to
 tweets_list = []
@@ -19,7 +19,6 @@ stocklist = ['$NVDA', '$AHT', '$AAPL', '$MSFT', '$AMZN',
             '$RKT', '$BB', '$XOM', '$GE', '$ADMP', 
             '$AEHR', '$CREX', '$CYRN', '$LPTH', '$WTER']
 
-
 # Specify the timeframe to check tweets and the language
 timeframe = ' since:2021-06-01 until:2021-07-01'
 language = ' lang:en '
@@ -29,7 +28,7 @@ for stock in stocklist:
     # For each tweet on the specific stock, get the items
     for i,tweet in enumerate(sntwitter.TwitterSearchScraper(stock + language + timeframe).get_items()):
         # Stop if we have reached 10,0000 tweets
-        if i>maxTweets:
+        if i>maximumTweets:
             break
         # Append all the information below into the list as one item
         tweets_list.append([tweet.date, tweet.id, stock.lstrip('$'), tweet.user.url, tweet.user.username, tweet.user.followersCount, tweet.user.friendsCount, tweet.content, tweet.retweetCount, tweet.likeCount, tweet.replyCount, tweet.lang])
