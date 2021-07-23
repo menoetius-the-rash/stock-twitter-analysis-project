@@ -1,11 +1,9 @@
 from time import sleep
-import requests
 import config
-import csv
 import os
 import pandas as pd
-from datetime import date, timedelta
 
+# Create the  stocklist to iterate through
 stocklist = ['NVDA', 'AHT', 'AAPL', 'MSFT', 'AMZN', 
             'BNGO', 'CCIV', 'GME', 'JNJ', 'BNTX', 
             'NEGG', 'OCGN', 'UONE', 'AAPL', 'BYND', 
@@ -17,23 +15,32 @@ stocklist = ['NVDA', 'AHT', 'AAPL', 'MSFT', 'AMZN',
             'RKT', 'BB', 'XOM', 'GE', 'ADMP', 
             'AEHR', 'CREX', 'CYRN', 'LPTH', 'WTER']
 
-stocklist2 = ['AAPL', 'BNTX']
+# Create a location to save the file to later
 location = config.location
+
+# create a counter for the purpose of using for sleep.
 counter = 1
 
+# For loop to iterate through the stocklist above
 for stock in stocklist:
-  test1 = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol=' + stock +'&interval=1min&slice=year1month1&apikey=' + config.api_key
-  test2 = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol='+ stock +'&interval=1min&slice=year1month2&apikey=' + config.api_key
-  CSV_URL1 = test1
-  CSV_URL2 = test2
-  df1 = pd.read_csv(CSV_URL1)
-  df2 = pd.read_csv(CSV_URL2)
-  # Creating a dataframe from the above CSV
-  stockmonth_df1 = pd.DataFrame(df1, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
-  stockmonth_df2 = pd.DataFrame(df2, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
-  df1.append(df2)
+  # Create the URL for each API call specifically for 2 months behind in order to fully collect June month tweets
+  stock_url1 = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol='+ stock +'&interval=1min&slice=year1month1&apikey=' + config.api_key
+  stock_url2 = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol='+ stock +'&interval=1min&slice=year1month2&apikey=' + config.api_key
+
+  # Turn stock_urls above into dataframes
+  df1 = pd.read_csv(stock_url1)
+  df2 = pd.read_csv(stock_url2)
+  
+  # Append each 2nd dataframe to the first one
+  df1 = df1.append(df2)
+
+  # Create the stock filename to save the CSV file from stocklist
   stockFileName = stock + '.csv'
+  
+  # Export the dataframe into the location with the filename and index as falls
   df1.to_csv(os.path.join(location,stockFileName), index=False)
+
+  # Create a sleep function in order put loop into sleep for 60 seconds. To prevent from being timed out by the API
   if counter % 2 == 0:
     sleep(60)
   counter += 1
