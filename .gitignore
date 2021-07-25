@@ -134,4 +134,7 @@ config.py
 # stocks folder containing intraday
 stocks/
 
+# config env
+config.env
+
 
