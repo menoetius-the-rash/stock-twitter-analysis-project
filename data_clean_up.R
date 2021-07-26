@@ -48,10 +48,11 @@ test.txt.GMTp1 = lubridate::with_tz(test.txt, "Europe/Dublin")
 test.txt.GMTp1
 
 test_run2 = read.csv("tweets_time_cleaned.csv")
-cleaned = subset(test_run2, select =  -c(2,3,4,12))
+cleaned = subset(test1, select =  -c(2,3,4,12,13))
 head(cleaned)
 write.csv(cleaned, "tweets_time_cleaned_trimmed.csv", row.names = FALSE)
-
+write.csv(cleaned, "FSLY_cleaned_trimmed.csv", row.names = FALSE)
+cleaned$Datetime = do.call("c", cleaned$Datetime)
 
 test_run3 = read.csv("tweets_time_cleaned_trimmed.csv")
 
@@ -62,11 +63,11 @@ cl <- makeCluster(cores[1]-1) #not to overload your computer
 registerDoParallel(cl)
 
 start <- proc.time()
-test_run4$Datetime = foreach(i=1:length(test_run4$Datetime), .packages = "lubridate") %dopar% {
+test1$Datetime = foreach(i=1:length(test1$Datetime), .packages = "lubridate") %dopar% {
   #loop contents here
-  time_in_UTC = lubridate::ymd_hms(test_run4$Datetime[i])
+  time_in_UTC = lubridate::ymd_hms(test1$Datetime[i])
   converted_to_IST = lubridate::with_tz(time_in_UTC, "Europe/Dublin")
-  test_run4$Datetime[i] = converted_to_IST
+  test1$Datetime[i] = converted_to_IST
 }
 time_it_took <- proc.time()-start
 # user  system elapsed 
@@ -95,9 +96,9 @@ registerDoParallel(cl)
 
 start <- proc.time()
 #convert
-test_run5$time = foreach(i=1:length(test_run5$time), .packages = "lubridate") %dopar% {
+test1$time = foreach(i=1:length(test1$time), .packages = "lubridate") %dopar% {
   #loop contents here
-  tz_assigned = as.POSIXct(test_run5$time[i], tz="America/New_York")
+  tz_assigned = as.POSIXct(test1$time[i], tz="America/New_York")
   tz_converted = lubridate::with_tz(tz_assigned, "Europe/Dublin")
 }
 
@@ -114,21 +115,46 @@ test_run5$time = do.call("c", test_run5$time)
 write.csv(test_run5, "AAPL_time_converted.csv", row.names = FALSE)
 
 # apply this to all stock csvs
+stock_folder = paste0(location,"/stocks")
+setwd(stock_folder)
+getwd()
 
+list_of_files = list.files(pattern="*.csv")
+myfiles = lapply(list_of_files, read.delim)
+length(list_of_files)
+
+cores=detectCores()
+cl <- makeCluster(cores[1]-1) #not to overload your computer
+registerDoParallel(cl)
+start <- proc.time()
+for (stock in 1:length(list_of_files)) {
+  stocks = read.csv(list_of_files[stock])
+  stocks$time = foreach(i=1:length(stocks$time), .packages = "lubridate") %dopar% {
+    #loop contents here
+    tz_assigned = as.POSIXct(stocks$time[i], tz="America/New_York")
+    tz_converted = lubridate::with_tz(tz_assigned, "Europe/Dublin")
+  }
+  stock_file_update = str_split(list_of_files[stock], pattern = "\\.")
+  stocks$time = do.call("c", stocks$time)
+  stock_file_update = unlist(stock_file_update)
+  stock_rewritten = as.character(paste0(stock_file_update[1], "_updated.", stock_file_update[2]))
+  stocks$stock = stock_file_update[1]
+  write.csv(stocks, stock_rewritten, row.names = FALSE)
+}
+time_it_took <- proc.time()-start
+time_it_took
+stopCluster(cl)
 
 ###### pseudonymisation of usernames
-tweets = read.csv("tweets_time_cleaned_trimmed_time_converted.csv")
+setwd(location)
+tweets = read.csv("FSLY_tweets.csv")
 
 test1 = tweets
-
-digest_seed = Sys.getenv(seed)
-
-typeof(test1$Username)
 
 pseudonymize_names = sapply(test1$Username, digest, algo="crc32", serialize=FALSE)
 
 test1$Username = pseudonymize_names
 
-test1$Username
-
 write.csv(test1, "tweets_cleaned_pseudonymized.csv", row.names = FALSE)
+
+head(test1)
