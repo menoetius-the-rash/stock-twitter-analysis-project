@@ -5,7 +5,10 @@ library(doParallel)
 library(tidyverse)
 library(lubridate)
 library(data.table)
+library(tibbletime)
 library(digest)
+library(dplyr)
+library(readr)
 
 load_dot_env("config.env")
 location = Sys.getenv("location")
@@ -13,148 +16,260 @@ location
 setwd(location)
 getwd()
 
-stock_test = read.csv("AAPL.csv")
 tweets = read.csv("tweets.csv")
-
 
 #setup parallel backend to use many processors
 # remove the pattern "+00:00" from the time
-cores=detectCores()
-cl <- makeCluster(cores[1]-1) #not to overload your computer
-registerDoParallel(cl)
-
-test_run2 = tweets
-length(test_run2)
 pattern = "\\+00:00"
 
-test_run2$Datetime = foreach(i=1:length(test_run2$Datetime), .packages = "stringr") %dopar% {
-                        x = str_remove(test_run2$Datetime[i], pattern)
-                        test_run2$Datetime[i] = x
+# Use multicore to speed up process
+c = detectCores()
+# avoid overload buy only using maximum - 1 cores available
+cores_to_use <- makeCluster(c[1]-1)
+# register cores
+registerDoParallel(cores_to_use)
+# Time the running of the function
+start <- proc.time()
+# the for loop uses multicore and uses the package stringr to remove the "+00:00" pattern on each item
+tweets$Datetime = foreach(i=1:length(tweets$Datetime), .packages = "stringr") %dopar% {
+                        x = str_remove(tweets$Datetime[i], pattern)
+                        tweets$Datetime[i] = x
                       }
-
-test_run2$Datetime = unlist(test_run2$Datetime)
-write.csv(test_run2, "tweets_time_cleaned.csv", row.names = FALSE)
-head(test_run2)
-
 #stop cluster
-stopCluster(cl)
+stopCluster(cores_to_use)
+
+# Subtract time to find out how long it took to run
+time_it_took <- proc.time()-start
+time_it_took
+# user  system elapsed 
+# 166.31   24.44  241.03 
+
+# unlist the result in order to be able to save in CSV
+tweets$Datetime = unlist(tweets$Datetime)
+
+# save file to CSV
+write.csv(tweets, "tweets_time_cleaned.csv", row.names = FALSE)
 
 
-####### WORKING convert to Irish time
-####### tweets
+#### Clean & Convert time to Irish time ####
 
-test.txt = lubridate::ymd_hms(test_run3$Datetime[1])
-test.txt.GMTp1 = lubridate::with_tz(test.txt, "Europe/Dublin")
-test.txt.GMTp1
+#### Clean &Convert time on tweets to Irish time ####
 
-test_run2 = read.csv("tweets_time_cleaned.csv")
-cleaned = subset(test1, select =  -c(2,3,4,12,13))
-head(cleaned)
+# Read file
+tweets = read.csv("tweets_time_cleaned.csv")
+
+# Remove unneeded columns
+cleaned = subset(tweets, select =  -c(2,4,12))
+
+# Write file to back up
 write.csv(cleaned, "tweets_time_cleaned_trimmed.csv", row.names = FALSE)
-write.csv(cleaned, "FSLY_cleaned_trimmed.csv", row.names = FALSE)
-cleaned$Datetime = do.call("c", cleaned$Datetime)
 
-test_run3 = read.csv("tweets_time_cleaned_trimmed.csv")
+#cleaned$Datetime = do.call("c", cleaned$Datetime)
 
+tweets = read.csv("tweets_time_cleaned_trimmed.csv")
 
-test_run4 = test_run3
-cores=detectCores()
-cl <- makeCluster(cores[1]-1) #not to overload your computer
-registerDoParallel(cl)
-
+# Use multicore to speed up process
+c = detectCores()
+# avoid overload buy only using maximum - 1 cores available
+cores_to_use <- makeCluster(c[1]-1)
+# register cores
+registerDoParallel(cores_to_use)
+# Time the running of the function
 start <- proc.time()
-test1$Datetime = foreach(i=1:length(test1$Datetime), .packages = "lubridate") %dopar% {
-  #loop contents here
-  time_in_UTC = lubridate::ymd_hms(test1$Datetime[i])
+
+# The for loop uses parallel to convert the time from UTC to Local Irish Time
+tweets$Datetime = foreach(i=1:length(tweets$Datetime), .packages = "lubridate") %dopar% {
+  time_in_UTC = lubridate::ymd_hms(tweets$Datetime[i])
   converted_to_IST = lubridate::with_tz(time_in_UTC, "Europe/Dublin")
-  test1$Datetime[i] = converted_to_IST
+  tweets$Datetime[i] = converted_to_IST
 }
-time_it_took <- proc.time()-start
-# user  system elapsed 
-# 139.98   20.64  282.19
-
-time_it_took
 #stop cluster
-stopCluster(cl)
-
-# convert list of dates into a vector by using do.call to keep date and time name instead of displaying as numeric
-test_run4$Datetime = do.call("c", test_run4$Datetime)
-# write to file
-write.csv(test_run4, "tweets_time_cleaned_trimmed_time_converted.csv", row.names = FALSE)
-
-
-###### stocks Irish time
-stock_test = read.csv("AAPL.csv")
-
-# convert time
-
-test_run5 = stock_test
-
-cores=detectCores()
-cl <- makeCluster(cores[1]-1) #not to overload your computer
-registerDoParallel(cl)
-
-start <- proc.time()
-#convert
-test1$time = foreach(i=1:length(test1$time), .packages = "lubridate") %dopar% {
-  #loop contents here
-  tz_assigned = as.POSIXct(test1$time[i], tz="America/New_York")
-  tz_converted = lubridate::with_tz(tz_assigned, "Europe/Dublin")
-}
-
+stopCluster(cores_to_use)
+# Subtract time to find out how long it took to run
 time_it_took <- proc.time()-start
 time_it_took
 # user  system elapsed 
-# 9.99    1.39   14.11 
-
-#stop cluster
-stopCluster(cl)
+# 184.00   23.39  345.57 
 
 # convert list of dates into a vector by using do.call to keep date and time name instead of displaying as numeric
-test_run5$time = do.call("c", test_run5$time)
-write.csv(test_run5, "AAPL_time_converted.csv", row.names = FALSE)
+tweets$Datetime = do.call("c", tweets$Datetime)
 
-# apply this to all stock csvs
+# write to file for back up
+write.csv(tweets, "tweets_time_cleaned_trimmed_time_converted.csv", row.names = FALSE)
+
+
+#### Convert Stocks to Irish time
+
+# get to the folder where the stock *.csv are stored
 stock_folder = paste0(location,"/stocks")
 setwd(stock_folder)
-getwd()
 
+# Create a list of the files in this folder that have .csv
 list_of_files = list.files(pattern="*.csv")
-myfiles = lapply(list_of_files, read.delim)
-length(list_of_files)
 
-cores=detectCores()
-cl <- makeCluster(cores[1]-1) #not to overload your computer
-registerDoParallel(cl)
+# Use multicore to speed up process
+c = detectCores()
+# avoid overload buy only using maximum - 1 cores available
+cores_to_use <- makeCluster(c[1]-1)
+# register cores
+registerDoParallel(cores_to_use)
+# Time the running of the function
 start <- proc.time()
+
+# this for loop goes through each stock.csv in the list_of_files
 for (stock in 1:length(list_of_files)) {
+  
+  # Assign the stock just read as stocks
   stocks = read.csv(list_of_files[stock])
+  
+  # Using a for loop with the package lubridate. Convert the time from America/New York to local Irish Time
   stocks$time = foreach(i=1:length(stocks$time), .packages = "lubridate") %dopar% {
-    #loop contents here
     tz_assigned = as.POSIXct(stocks$time[i], tz="America/New_York")
     tz_converted = lubridate::with_tz(tz_assigned, "Europe/Dublin")
   }
+  
+  # String manipulation with the stock name in order to save the stock into a new file name
   stock_file_update = str_split(list_of_files[stock], pattern = "\\.")
+  
+  # the do.call function concatenates using c. It allows us to unlist the converted time
+  # in order for it to be written in csv
   stocks$time = do.call("c", stocks$time)
   stock_file_update = unlist(stock_file_update)
+  
+  # Create the file name for the stock from the split string
   stock_rewritten = as.character(paste0(stock_file_update[1], "_updated.", stock_file_update[2]))
+  
+  # add a column of the stock ticker name e.g. "MSFT" is the value listed if the stock being processed is Microsoft
   stocks$stock = stock_file_update[1]
+  
+  # write file for back up
   write.csv(stocks, stock_rewritten, row.names = FALSE)
 }
+
+#stop cluster
+stopCluster(cores_to_use)
+# Subtract time to find out how long it took to run
 time_it_took <- proc.time()-start
 time_it_took
-stopCluster(cl)
 
-###### pseudonymisation of usernames
+#### Pseudonymisation of twitter usernames ####
+# set location
 setwd(location)
-tweets = read.csv("FSLY_tweets.csv")
 
-test1 = tweets
+# read file
+tweets = read.csv("tweets_time_cleaned_trimmed_time_converted.csv")
 
-pseudonymize_names = sapply(test1$Username, digest, algo="crc32", serialize=FALSE)
+# This converts the names using algorithm crc32
+pseudonymize_names = sapply(tweets$Username, digest, algo="crc32", serialize=FALSE)
 
-test1$Username = pseudonymize_names
+# change names of username to the converted ones
+tweets$Username = pseudonymize_names
 
-write.csv(test1, "tweets_cleaned_pseudonymized.csv", row.names = FALSE)
+# save the file
+write.csv(tweets, "tweets_cleaned_pseudonymized.csv", row.names = FALSE)
 
-head(test1)
+#### Combine all updated stock CSVs as one big CSV called stocks.csv ####
+
+# get to the folder where the stock *.csv are stored
+stock_folder = paste0(location,"/stocks")
+setwd(stock_folder)
+
+
+#   time        open        high         low       close      volume       stock 
+# "character"   "numeric"   "numeric"   "numeric"   "numeric"   "integer" "character" 
+# Create a list of the files in this folder that have "_updated.csv"
+stocks_combined = data.frame(time = character(),
+                    open = numeric(),
+                    high = numeric(),
+                    low = numeric(),
+                    close = numeric(),
+                    volume = integer(),
+                    stock = character())
+
+files_to_combine = list.files(pattern="*_updated.csv")
+stocks = read.csv("F_updated.csv", colClasses = c("character", "numeric", "numeric", "numeric", 
+                                                  "numeric", "integer", "character"))
+stocks$stock = as.character(stocks$stock)
+stocks$stock = c('F')
+write.csv(stocks, "F_updated.csv", row.names = FALSE)
+
+
+
+class(stocks$time[1])
+
+stocks$time = ymd_hms(stocks$time,tz="Europe/Dublin")
+stocks_tibbletime = as_tbl_time(stocks, index = time)
+
+class(stocks$time)
+head(stocks$time)
+class(stocks_tibbletime)
+head(stocks_tibbletime)
+NROW(stocks_tibbletime)
+stocks %>% filter(time ~ "2021-07")
+
+test = filter_time(stocks_tibbletime, ~'2015-06')
+
+test = stocks_tibbletime %>% as_tibble %>% mutate(index=seq(n())) %>% 
+  arrange(time)
+head(test)
+
+head(stocks_tibbletime)
+stocks_tibbletime %>%
+  filter_time(~"2021-06")
+write.csv(stocks_tibbletime, "_TEST.csv", row.names = FALSE)
+
+
+for (i in 1:length(files_to_combine)) {
+  stock_name = 
+  stocks = read.csv(files_to_combine[i], colClasses = c("character", "numeric", "numeric", "numeric", 
+                                                        "numeric", "integer", "character"))
+  print(paste0(i, " FILE"))
+  print(paste0(sapply(stocks, class)))
+}
+
+ydm_hm()
+
+
+
+for (stock in 1:length(files_to_combine)) {
+  # Assign the stock just read as stocks
+  stocks = read.csv(files_to_combine[stock], colClasses = c("character", "numeric", "numeric", "numeric", 
+                                                              "numeric", "integer", "character"))
+  stocks_combined = merge.data.frame(stocks_combined, stocks_combined, all = TRUE)
+  
+  stocks_updated <- data.frame(lapply(stocks, is.character), stringsAsFactors=FALSE)
+  
+  # String manipulation with the stock name in order to save the stock into a new file name
+  stock_file_update = str_split(list_of_files[stock], pattern = "\\.")
+  
+  # the do.call function concatenates using c. It allows us to unlist the converted time
+  # in order for it to be written in csv
+  stocks$time = do.call("c", stocks$time)
+  stock_file_update = unlist(stock_file_update)
+  
+  # Create the file name for the stock from the split string
+  stock_rewritten = as.character(paste0(stock_file_update[1], "_updated.", stock_file_update[2]))
+}
+
+#stocks= data.frame(lapply(stocks, as.character), stringsAsFactors=FALSE)
+
+col_to_update <- sapply(stocks, is.character)
+stocks[col_to_update] <- lapply(stocks[col_to_update], as.character)
+
+sapply(stocks, class)
+
+stocks <- list.files(path=stock_folder, pattern="*_updated.csv", full.names = TRUE) %>% 
+  lapply(read_csv, colClasses = c("character", "numeric", "numeric", "numeric", 
+                                  "numeric", "integer", "character") ) %>% 
+  bind_rows 
+
+for (i in 1:length(files_to_combine)) {
+  stocks = read.csv(files_to_combine[i], colClasses = c("character", "numeric", "numeric", "numeric", 
+                                                            "numeric", "integer", "character"))
+  stocks_combined = rbind(stocks_combined, stocks)
+}
+
+write.csv(stocks_combined, "stocks.csv", row.names = FALSE)
+
+tbl <- stocks %>% 
+  transmute(time = as.POSIXct(strptime(date,"%Y/%m/%d %H:%M:%S")))
