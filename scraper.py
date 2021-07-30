@@ -10,7 +10,7 @@ tweets_list = []
 # Create the stock list that we will iterate through
 stocklist = ['$NVDA', '$AHT', '$AAPL', '$MSFT', '$AMZN', 
             '$BNGO', '$CCIV', '$GME', '$JNJ', '$BNTX', 
-            '$NEGG', '$OCGN', '$UONE', '$AAPL', '$BYND', 
+            '$NEGG', '$OCGN', '$UONE', '$FSLY', '$BYND', 
             '$MRNA', '$PFE', '$TSLA', '$ORCL', '$PLTR', 
             '$FB', '$SPY', '$BABA', '$NIO', '$PZZA', 
             '$ABNB', '$VIAC', '$AMD', '$TWTR', '$NKE', 
