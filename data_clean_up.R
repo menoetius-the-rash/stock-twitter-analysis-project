@@ -6,6 +6,7 @@ library(tidyverse)
 library(lubridate)
 library(data.table)
 library(tibbletime)
+devtools::install_github("business-science/tibbletime")
 library(digest)
 library(dplyr)
 library(readr)
@@ -15,7 +16,7 @@ location = Sys.getenv("location")
 location
 setwd(location)
 getwd()
-
+detach("package:tibbletime", unload=TRUE)
 tweets = read.csv("tweets.csv")
 
 #setup parallel backend to use many processors
@@ -67,7 +68,8 @@ write.csv(cleaned, "tweets_time_cleaned_trimmed.csv", row.names = FALSE)
 #cleaned$Datetime = do.call("c", cleaned$Datetime)
 
 tweets = read.csv("tweets_time_cleaned_trimmed.csv")
-
+head(subset(tweets, Stock == 'FSLY'))
+head(subset(tweets, Stock == 'WTER'))
 # Use multicore to speed up process
 c = detectCores()
 # avoid overload buy only using maximum - 1 cores available
@@ -174,10 +176,7 @@ write.csv(tweets, "tweets_cleaned_pseudonymized.csv", row.names = FALSE)
 stock_folder = paste0(location,"/stocks")
 setwd(stock_folder)
 
-
-#   time        open        high         low       close      volume       stock 
-# "character"   "numeric"   "numeric"   "numeric"   "numeric"   "integer" "character" 
-# Create a list of the files in this folder that have "_updated.csv"
+# create an empty data frame for merging purposes
 stocks_combined = data.frame(time = character(),
                     open = numeric(),
                     high = numeric(),
@@ -186,90 +185,70 @@ stocks_combined = data.frame(time = character(),
                     volume = integer(),
                     stock = character())
 
+# Create a list of the files in this folder that have pattern "_updated.csv"
 files_to_combine = list.files(pattern="*_updated.csv")
-stocks = read.csv("F_updated.csv", colClasses = c("character", "numeric", "numeric", "numeric", 
-                                                  "numeric", "integer", "character"))
-stocks$stock = as.character(stocks$stock)
-stocks$stock = c('F')
-write.csv(stocks, "F_updated.csv", row.names = FALSE)
 
-
-
-class(stocks$time[1])
-
-stocks$time = ymd_hms(stocks$time,tz="Europe/Dublin")
-stocks_tibbletime = as_tbl_time(stocks, index = time)
-
-class(stocks$time)
-head(stocks$time)
-class(stocks_tibbletime)
-head(stocks_tibbletime)
-NROW(stocks_tibbletime)
-stocks %>% filter(time ~ "2021-07")
-
-test = filter_time(stocks_tibbletime, ~'2015-06')
-
-test = stocks_tibbletime %>% as_tibble %>% mutate(index=seq(n())) %>% 
-  arrange(time)
-head(test)
-
-head(stocks_tibbletime)
-stocks_tibbletime %>%
-  filter_time(~"2021-06")
-write.csv(stocks_tibbletime, "_TEST.csv", row.names = FALSE)
-
-
-for (i in 1:length(files_to_combine)) {
-  stock_name = 
-  stocks = read.csv(files_to_combine[i], colClasses = c("character", "numeric", "numeric", "numeric", 
-                                                        "numeric", "integer", "character"))
-  print(paste0(i, " FILE"))
-  print(paste0(sapply(stocks, class)))
-}
-
-ydm_hm()
-
-
-
-for (stock in 1:length(files_to_combine)) {
-  # Assign the stock just read as stocks
-  stocks = read.csv(files_to_combine[stock], colClasses = c("character", "numeric", "numeric", "numeric", 
-                                                              "numeric", "integer", "character"))
-  stocks_combined = merge.data.frame(stocks_combined, stocks_combined, all = TRUE)
-  
-  stocks_updated <- data.frame(lapply(stocks, is.character), stringsAsFactors=FALSE)
-  
-  # String manipulation with the stock name in order to save the stock into a new file name
-  stock_file_update = str_split(list_of_files[stock], pattern = "\\.")
-  
-  # the do.call function concatenates using c. It allows us to unlist the converted time
-  # in order for it to be written in csv
-  stocks$time = do.call("c", stocks$time)
-  stock_file_update = unlist(stock_file_update)
-  
-  # Create the file name for the stock from the split string
-  stock_rewritten = as.character(paste0(stock_file_update[1], "_updated.", stock_file_update[2]))
-}
-
-#stocks= data.frame(lapply(stocks, as.character), stringsAsFactors=FALSE)
-
-col_to_update <- sapply(stocks, is.character)
-stocks[col_to_update] <- lapply(stocks[col_to_update], as.character)
-
-sapply(stocks, class)
-
-stocks <- list.files(path=stock_folder, pattern="*_updated.csv", full.names = TRUE) %>% 
-  lapply(read_csv, colClasses = c("character", "numeric", "numeric", "numeric", 
-                                  "numeric", "integer", "character") ) %>% 
-  bind_rows 
-
+# iterate through list to import files to r then merge all using rbind
 for (i in 1:length(files_to_combine)) {
   stocks = read.csv(files_to_combine[i], colClasses = c("character", "numeric", "numeric", "numeric", 
-                                                            "numeric", "integer", "character"))
+                                                         "numeric", "integer", "character"))
   stocks_combined = rbind(stocks_combined, stocks)
 }
 
+# save the file for backup
 write.csv(stocks_combined, "stocks.csv", row.names = FALSE)
 
-tbl <- stocks %>% 
-  transmute(time = as.POSIXct(strptime(date,"%Y/%m/%d %H:%M:%S")))
+# read file and separate date and time. Then take off the seconds from time 
+stocks = read.csv("stocks.csv", colClasses = c("character", "numeric", "numeric", "numeric", 
+                                                  "numeric", "integer", "character"))
+
+# sort by date ascending
+stocks = stocks[order(stocks$time, decreasing = FALSE),]
+
+# separate date and time
+stock_separated = tidyr::separate(stocks, time, c("date", "time"), sep = " ")
+
+# save file for backup
+write.csv(stock_separated, "stocks_updated.csv", row.names = FALSE)
+
+# read updated file
+stocks = read.csv("stocks_updated.csv", colClasses = c("character", "character",  "numeric", "numeric", "numeric", 
+                                                       "numeric", "integer", "character"))
+
+# ensure date column is date to be able to filter for month of June and 1st day of July
+stocks$date = as.Date(stocks$date, format="%Y-%m-%d")
+
+# save new filtered file as stocks_filtered for the days we need
+stocks_filtered = subset(stock_test, date >= "2021-06-01" & date <= "2021-07-01")
+
+# trim seconds of time
+stocks_filtered$time = substr(stocks_filtered$time, 1, 5)
+
+# save file for back up
+write.csv(test, 'stocks_updated_trimmed.csv', row.names = FALSE)
+
+#### Update tweets to separate date and time ####
+
+# set folder 
+tweets_folder = paste0(location, "/tweets")
+setwd(tweets_folder)
+
+# read file
+tweets = read.csv("tweets_cleaned_pseudonymized.csv", colClasses = c("character",  "character", "character", 
+                                                                     "numeric", "numeric", "character", 
+                                                                     "numeric", "numeric", "numeric"))
+
+# sort by date ascending
+tweets = tweets[order(tweets$Datetime, decreasing = FALSE),]
+
+# separate date and time for tweets
+tweets_separated = tidyr::separate(tweets, Datetime, c("date", "time"), sep = " ")
+
+# ensure date is set to date
+tweets_separated$date = as.Date(tweets_separated$date, format="%Y-%m-%d")
+
+# trim seconds of time
+tweets_separated$time = substr(tweets_separated$time, 1, 5)
+
+# save file for backup
+write.csv(tweets_separated, "tweets_separated.csv", row.names = FALSE)
