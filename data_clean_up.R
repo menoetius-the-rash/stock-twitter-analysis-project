@@ -5,18 +5,20 @@ library(doParallel)
 library(tidyverse)
 library(lubridate)
 library(data.table)
-library(tibbletime)
-devtools::install_github("business-science/tibbletime")
 library(digest)
 library(dplyr)
 library(readr)
 
+# load configuration
 load_dot_env("config.env")
+
+# get location from config file
 location = Sys.getenv("location")
-location
+
+# set location
 setwd(location)
-getwd()
-detach("package:tibbletime", unload=TRUE)
+
+# read file
 tweets = read.csv("tweets.csv")
 
 #setup parallel backend to use many processors
