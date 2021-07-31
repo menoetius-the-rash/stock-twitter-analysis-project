@@ -154,7 +154,7 @@ tweets_to_analyse = tweets_cleaned$text
 length(tweets_to_analyse)
 # sentiment analysis using SentimentAnalysis package
 limit = 27689
-tweets_sentiment = analyzeSentiment(tweets_to_analyse[1:limit])
+tweets_sentiment1 = analyzeSentiment(tweets_to_analyse[1:limit])
 limit2 = limit + 50000
 tweets_sentiment2 = analyzeSentiment(tweets_to_analyse[(limit+1):limit2])
 limit3 = limit2 + 50000 
@@ -171,8 +171,29 @@ tweets_sentiment7 = analyzeSentiment(tweets_to_analyse[(limit6+1):limit7])
 totalrows = nrow(tweets_sentiment) + nrow(tweets_sentiment2) + nrow(tweets_sentiment3) + nrow(tweets_sentiment4)+
   nrow(tweets_sentiment5) + nrow(tweets_sentiment6) + nrow(tweets_sentiment7)
 
+tweets_sentiment_score = c(tweets_sentiment1$SentimentQDAP, tweets_sentiment2$SentimentQDAP, 
+                               tweets_sentiment3$SentimentQDAP, tweets_sentiment4$SentimentQDAP,
+                               tweets_sentiment5$SentimentQDAP, tweets_sentiment6$SentimentQDAP,
+                               tweets_sentiment7$SentimentQDAP)
 
+tweet_sentiment_value = convertToDirection(tweets_sentiment_score)
 
+length(tweets_sentiment_score)
+length(tweet_sentiment_value)
+
+tweets_cleaned = cbind(tweets_cleaned, tweets_sentiment_score, tweet_sentiment_value)
+
+head(tweets_cleaned)
+head(tweets_sentiment1$SentimentQDAP)
+tweets_sentiment1$SentimentQDAP
+ncol(tweets_sentiment_score)
+
+head(tweets)
+nrow(tweets)
+
+tweets_with_sentiment_score = cbind(tweets, tweets_cleaned$tweets_sentiment_score, tweets_cleaned$tweet_sentiment_value)
+
+head(tweets_with_sentiment_score)
 
 if(.Platform$OS.type == "windows") withAutoprint({
   memory.size()
