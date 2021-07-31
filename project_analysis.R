@@ -151,12 +151,28 @@ head(tweets_cleaned)
 tweets_cleaned$sentiment_score = c(0)
 
 tweets_to_analyse = tweets_cleaned$text
+length(tweets_to_analyse)
 # sentiment analysis using SentimentAnalysis package
-tweets_sentiment = analyzeSentiment(tweets_to_analyse[1:10])
+limit = 27689
+tweets_sentiment = analyzeSentiment(tweets_to_analyse[1:limit])
+limit2 = limit + 50000
+tweets_sentiment2 = analyzeSentiment(tweets_to_analyse[(limit+1):limit2])
+limit3 = limit2 + 50000 
+tweets_sentiment3 = analyzeSentiment(tweets_to_analyse[(limit2+1):limit3])
+limit4 = limit3 + 50000 
+tweets_sentiment4 = analyzeSentiment(tweets_to_analyse[(limit3+1):limit4])
+limit5 = limit4 + 50000
+tweets_sentiment5 = analyzeSentiment(tweets_to_analyse[(limit4+1):limit5])
+limit6 = limit5 + 50000
+tweets_sentiment6 = analyzeSentiment(tweets_to_analyse[(limit5+1):limit6])
+limit7 = limit6 + 50000
+tweets_sentiment7 = analyzeSentiment(tweets_to_analyse[(limit6+1):limit7])
 
-tweets_sentiment2 <- tweets_sentiment$SentimentQDAP
+totalrows = nrow(tweets_sentiment) + nrow(tweets_sentiment2) + nrow(tweets_sentiment3) + nrow(tweets_sentiment4)+
+  nrow(tweets_sentiment5) + nrow(tweets_sentiment6) + nrow(tweets_sentiment7)
 
-tweets_sentiment3 <- convertToDirection(tweets_sentiment$SentimentQDAP)
+
+
 
 if(.Platform$OS.type == "windows") withAutoprint({
   memory.size()
@@ -164,7 +180,7 @@ if(.Platform$OS.type == "windows") withAutoprint({
   memory.limit()
 })
 memory.size(max = FALSE)
-memory.limit(size=56000)
+memory.limit(size=150000)
 # Use multicore to speed up process
 c = detectCores()
 # avoid overload buy only using maximum - 1 cores available
