@@ -144,15 +144,14 @@ length(tweet_clean_corpus)
 inspect(tweet_clean_corpus[1:5])
 
 # convert corpus back to a data frame
-tweets_cleaned <- data.frame(text = sapply(tweet_clean_corpus, paste, collapse = " "), stringsAsFactors = FALSE)
+tweets_cleaned = data.frame(text = sapply(tweet_clean_corpus, paste, collapse = " "), stringsAsFactors = FALSE)
 head(tweets_cleaned)
 
-# create a new column of sentiment score, filled with 0s for now
-tweets_cleaned$sentiment_score = c(0)
-
+# use text column to as tweets to analyse
 tweets_to_analyse = tweets_cleaned$text
-length(tweets_to_analyse)
-# sentiment analysis using SentimentAnalysis package
+
+# sentiment analysis using SentimentAnalysis package and return sentiment scores
+# Break it down to smaller scale to prevent not having enough memory
 limit = 27689
 tweets_sentiment1 = analyzeSentiment(tweets_to_analyse[1:limit])
 limit2 = limit + 50000
@@ -168,40 +167,27 @@ tweets_sentiment6 = analyzeSentiment(tweets_to_analyse[(limit5+1):limit6])
 limit7 = limit6 + 50000
 tweets_sentiment7 = analyzeSentiment(tweets_to_analyse[(limit6+1):limit7])
 
+# Checking if row is not enough
 totalrows = nrow(tweets_sentiment) + nrow(tweets_sentiment2) + nrow(tweets_sentiment3) + nrow(tweets_sentiment4)+
   nrow(tweets_sentiment5) + nrow(tweets_sentiment6) + nrow(tweets_sentiment7)
 
+# bind everything through caret for the sentiment score
 tweets_sentiment_score = c(tweets_sentiment1$SentimentQDAP, tweets_sentiment2$SentimentQDAP, 
                                tweets_sentiment3$SentimentQDAP, tweets_sentiment4$SentimentQDAP,
                                tweets_sentiment5$SentimentQDAP, tweets_sentiment6$SentimentQDAP,
                                tweets_sentiment7$SentimentQDAP)
 
+# get the sentiment value for each score
 tweet_sentiment_value = convertToDirection(tweets_sentiment_score)
 
-length(tweets_sentiment_score)
-length(tweet_sentiment_value)
-
+# bind this back to the tweets cleaned
 tweets_cleaned = cbind(tweets_cleaned, tweets_sentiment_score, tweet_sentiment_value)
-
 head(tweets_cleaned)
-head(tweets_sentiment1$SentimentQDAP)
-tweets_sentiment1$SentimentQDAP
-ncol(tweets_sentiment_score)
 
-head(tweets)
-nrow(tweets)
+# save file
+write.csv(tweets_cleaned, "tweets_sentiment_score.csv", row.names = FALSE)
 
-tweets_with_sentiment_score = cbind(tweets, tweets_cleaned$tweets_sentiment_score, tweets_cleaned$tweet_sentiment_value)
-
-head(tweets_with_sentiment_score)
-
-if(.Platform$OS.type == "windows") withAutoprint({
-  memory.size()
-  memory.size(TRUE)
-  memory.limit()
-})
-memory.size(max = FALSE)
-memory.limit(size=150000)
+tweets_to_analyse2 = tweets_cleaned$text
 # Use multicore to speed up process
 c = detectCores()
 # avoid overload buy only using maximum - 1 cores available
@@ -212,19 +198,25 @@ registerDoParallel(cores_to_use)
 start <- proc.time()
 
 # the for loop uses multicore and uses the package stringr to remove the "+00:00" pattern on each item
-result = foreach(i=1:length(head(tweets_cleaned$text)), .packages = "match") %dopar% {
+result = foreach(i=1:length(tweets_to_analyse2), .packages = "data.table") %dopar% {
   tmp_pos = 0
   tmp_neg = 0
   
-  sentence = unlist(str_split(test_txt, pattern = " "))
+  sentence = unlist(str_split(tweets_to_analyse2[i], pattern = " "))
   for (i in 1:length(sentence)) {
     if(is.na(match(sentence[i], positive_words)) == FALSE)
       tmp_pos = tmp_pos + match(sentence[i], positive_words)
     if(is.na(match(sentence[i], negative_words)) == FALSE)
-      tmp_pos = tmp_pos + match(sentence[i], positive_words)
+      tmp_pos = tmp_neg + match(sentence[i], negative_words)
   }
-  score = tmp_pos- tmp_neg
+  score = c(score, tmp_pos- tmp_neg )
 }
+#stop cluster
+stopCluster(cores_to_use)
+
+# Subtract time to find out how long it took to run
+time_it_took <- proc.time()-start
+time_it_took
 
 tmp_pos = 0
 tmp_neg = 0
@@ -248,12 +240,7 @@ for (i in 1:length(sentence)) {
 score = tmp_pos- tmp_neg
 
 score
-#stop cluster
-stopCluster(cores_to_use)
 
-# Subtract time to find out how long it took to run
-time_it_took <- proc.time()-start
-time_it_took
 
 
 test_txt = "this is great and awesome I love it"
