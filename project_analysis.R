@@ -196,9 +196,11 @@ cores_to_use <- makeCluster(c[1]-1)
 registerDoParallel(cores_to_use)
 # Time the running of the function
 start <- proc.time()
+length(tweets_to_analyse2)
 
+score = c()
 # the for loop uses multicore and uses the package stringr to remove the "+00:00" pattern on each item
-result = foreach(i=1:length(tweets_to_analyse2), .packages = "data.table") %dopar% {
+result1 = foreach(i=1:87689, .packages = c("data.table", "stringr")) %dopar% {
   tmp_pos = 0
   tmp_neg = 0
   
@@ -207,7 +209,63 @@ result = foreach(i=1:length(tweets_to_analyse2), .packages = "data.table") %dopa
     if(is.na(match(sentence[i], positive_words)) == FALSE)
       tmp_pos = tmp_pos + match(sentence[i], positive_words)
     if(is.na(match(sentence[i], negative_words)) == FALSE)
-      tmp_pos = tmp_neg + match(sentence[i], negative_words)
+      tmp_neg = tmp_neg + match(sentence[i], negative_words)
+  }
+  score = c(score, tmp_pos- tmp_neg)
+}
+
+result2 = foreach(i=(87689+1):147690, .packages = c("data.table", "stringr")) %dopar% {
+  tmp_pos = 0
+  tmp_neg = 0
+  
+  sentence = unlist(str_split(tweets_to_analyse2[i], pattern = " "))
+  for (i in 1:length(sentence)) {
+    if(is.na(match(sentence[i], positive_words)) == FALSE)
+      tmp_pos = tmp_pos + match(sentence[i], positive_words)
+    if(is.na(match(sentence[i], negative_words)) == FALSE)
+      tmp_neg = tmp_neg + match(sentence[i], negative_words)
+  }
+  score = tmp_pos- tmp_neg
+}
+
+result3 = foreach(i=(147690+1):207691, .packages = c("data.table", "stringr")) %dopar% {
+  tmp_pos = 0
+  tmp_neg = 0
+  
+  sentence = unlist(str_split(tweets_to_analyse2[i], pattern = " "))
+  for (i in 1:length(sentence)) {
+    if(is.na(match(sentence[i], positive_words)) == FALSE)
+      tmp_pos = tmp_pos + match(sentence[i], positive_words)
+    if(is.na(match(sentence[i], negative_words)) == FALSE)
+      tmp_neg = tmp_neg + match(sentence[i], negative_words)
+  }
+  score = c(score, tmp_pos- tmp_neg )
+}
+
+result4 = foreach(i=(207691+1):267692, .packages = c("data.table", "stringr")) %dopar% {
+  tmp_pos = 0
+  tmp_neg = 0
+  
+  sentence = unlist(str_split(tweets_to_analyse2[i], pattern = " "))
+  for (i in 1:length(sentence)) {
+    if(is.na(match(sentence[i], positive_words)) == FALSE)
+      tmp_pos = tmp_pos + match(sentence[i], positive_words)
+    if(is.na(match(sentence[i], negative_words)) == FALSE)
+      tmp_neg = tmp_neg + match(sentence[i], negative_words)
+  }
+  score = c(score, tmp_pos- tmp_neg )
+}
+
+result5 = foreach(i=(267692+1):327689, .packages = c("data.table", "stringr")) %dopar% {
+  tmp_pos = 0
+  tmp_neg = 0
+  
+  sentence = unlist(str_split(tweets_to_analyse2[i], pattern = " "))
+  for (i in 1:length(sentence)) {
+    if(is.na(match(sentence[i], positive_words)) == FALSE)
+      tmp_pos = tmp_pos + match(sentence[i], positive_words)
+    if(is.na(match(sentence[i], negative_words)) == FALSE)
+      tmp_neg = tmp_neg + match(sentence[i], negative_words)
   }
   score = c(score, tmp_pos- tmp_neg )
 }
