@@ -67,21 +67,8 @@ for (stock in 1:length(list_of_stocks)) {
 
 tweet_lists
 
-head(AAPL_tweets)
-
-###############################################################
-# leave for now
-for (t in 1:length(tweet_lists)) {
-  assign(paste("tweets_", tweet_lists[t], sep=""),  tweet_lists[t] %>% select(Username, Text))
-  corpus_stock_tweets = paste("tweets_", tweet_lists[t], sep="")
-}
-######################
-
-
-# tweets strip of unnecessary stuff
+########################## Tweets strip of unnecessary stuff #####################################
 tweets_cleaned = tweets
-
-###############################################################
 
 positive_words = scan('positive-words.txt',what = 'character')
 negative_words = scan('negative-words.txt',what = 'character')
@@ -187,7 +174,15 @@ head(tweets_cleaned)
 # save file
 write.csv(tweets_cleaned, "tweets_sentiment_score.csv", row.names = FALSE)
 
-tweets_to_analyse2 = tweets_cleaned$text
+tweets_sentiment_score = read.csv("tweets_sentiment_score.csv")
+
+positive_words = scan('positive-words.txt',what = 'character')
+negative_words = scan('negative-words.txt',what = 'character')
+
+positive_words = c(positive_words, "buy", "rising", "rip")
+negative_words = c(negative_words, "sell", "dip", "crash")
+
+tweets_to_analyse2 = tweets_to_analyse2$text
 # Use multicore to speed up process
 c = detectCores()
 # avoid overload buy only using maximum - 1 cores available
@@ -196,9 +191,10 @@ cores_to_use <- makeCluster(c[1]-1)
 registerDoParallel(cores_to_use)
 # Time the running of the function
 start <- proc.time()
-length(tweets_to_analyse2)
 
+# set score 
 score = c()
+
 # the for loop uses multicore and uses the package stringr to remove the "+00:00" pattern on each item
 result1 = foreach(i=1:87689, .packages = c("data.table", "stringr")) %dopar% {
   tmp_pos = 0
@@ -211,7 +207,10 @@ result1 = foreach(i=1:87689, .packages = c("data.table", "stringr")) %dopar% {
     if(is.na(match(sentence[i], negative_words)) == FALSE)
       tmp_neg = tmp_neg + match(sentence[i], negative_words)
   }
-  score = c(score, tmp_pos- tmp_neg)
+  positive_matched_words = match(sentence, positive_words)
+  negative_matched_words = match(sentence, negative_words)
+
+  score = tmp_pos - tmp_neg
 }
 
 result2 = foreach(i=(87689+1):147690, .packages = c("data.table", "stringr")) %dopar% {
@@ -239,7 +238,7 @@ result3 = foreach(i=(147690+1):207691, .packages = c("data.table", "stringr")) %
     if(is.na(match(sentence[i], negative_words)) == FALSE)
       tmp_neg = tmp_neg + match(sentence[i], negative_words)
   }
-  score = c(score, tmp_pos- tmp_neg )
+  score = tmp_pos - tmp_neg
 }
 
 result4 = foreach(i=(207691+1):267692, .packages = c("data.table", "stringr")) %dopar% {
@@ -253,7 +252,7 @@ result4 = foreach(i=(207691+1):267692, .packages = c("data.table", "stringr")) %
     if(is.na(match(sentence[i], negative_words)) == FALSE)
       tmp_neg = tmp_neg + match(sentence[i], negative_words)
   }
-  score = c(score, tmp_pos- tmp_neg )
+  score = tmp_pos - tmp_neg
 }
 
 result5 = foreach(i=(267692+1):327689, .packages = c("data.table", "stringr")) %dopar% {
@@ -267,8 +266,9 @@ result5 = foreach(i=(267692+1):327689, .packages = c("data.table", "stringr")) %
     if(is.na(match(sentence[i], negative_words)) == FALSE)
       tmp_neg = tmp_neg + match(sentence[i], negative_words)
   }
-  score = c(score, tmp_pos- tmp_neg )
+  score = tmp_pos - tmp_neg
 }
+
 #stop cluster
 stopCluster(cores_to_use)
 
@@ -276,48 +276,37 @@ stopCluster(cores_to_use)
 time_it_took <- proc.time()-start
 time_it_took
 
-tmp_pos = 0
-tmp_neg = 0
-test_txt = "this is great and awesome I love it"
-test_txt2 = "i hate this so much i dislike it"
-sentence = unlist(str_split(test_txt, pattern = " "))
-sentence[3]
-class(sentence)
+# combine the results into a total
+total = unlist(c(result1, result2, result3, result4, result5))
 
-match(sentence, positive.words)
-is.na(match(sentence[8], positive_words))
-match(sentence[7], positive_words)
-is.na(match(sentence[3], negative_words))
+# create a reaction to find out if value is positive or negative
+reaction = c()
 
-for (i in 1:length(sentence)) {
-  if(is.na(match(sentence[i], positive_words)) == FALSE)
-    tmp_pos = tmp_pos + match(sentence[i], positive_words)
-  if(is.na(match(sentence[i], negative_words)) == FALSE)
-    tmp_neg = tmp_neg + match(sentence[i], negative_words)
+# put in negative/positive/neutral depending on the result
+for(i in 1:length(total)){
+  if(total[i] > 0){
+    reaction[i] = "positive"
+  } else if(total[i] < 0) {
+    reaction[i] = "negative"
+  } else if(total[i] == 0){
+    reaction[i] = "neutral"
+  }
 }
-score = tmp_pos- tmp_neg
 
-score
+# save as another sentiment score and value
+tweet_sentiment_score2 = total
+tweet_sentiment_value2 = reaction
 
+# add columns to the sentiment score and value
+tweets_sentiment_score$tweet_sentiment_score2 = tweet_sentiment_score2
+tweets_sentiment_score$tweet_sentiment_value2 = tweet_sentiment_value2
 
+# rename for clarity
+names(tweets_sentiment_score[2]) = "tweet_sentiment_score1"
+names(tweets_sentiment_score[3]) = "tweet_sentiment_value1"
 
-test_txt = "this is great and awesome I love it"
-test = str_split(test_txt, pattern = " ")
-oneword= "amazing"
-nega = "great"
-str_split(test_txt, pattern = " ")
-class(test)
-
-chmatch(test, positive_words)
-match(oneword, positive_words)
-match(nega, negative_words)
-is.na(match(oneword, positive_words))
-
-test = 10
-
-
-test = test + match(nega, negative_words)
-test
+# save file
+write.csv(tweets_sentiment_score, "tweets_sentiment_score_updated.csv")
 
 # create term document matrix
 tweet_clean_corpus_dtm <- DocumentTermMatrix(tweet_clean_corpus)
@@ -369,10 +358,17 @@ warnings()
 # sentiments
 positive = subset(raw_tweets_train, sentiment == "Positive")
 
+test = read.csv("tweets.csv")
+
+nrow(test)
+
+nrow(tweets_sentiment_score)
+nrow(test)
+
+sapply(test, class)
+
+head(test)
 ###############################################################
-
-
-
 
 
 #### Time Series Analysis ####
