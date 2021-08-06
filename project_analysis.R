@@ -1,7 +1,28 @@
+install.packages("dotenv")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("tidytext")
+install.packages("tidyverse")
+install.packages("wordcloud")
+install.packages("stringr")
+install.packages("RColorBrewer")
+install.packages("doParallel")
+install.packages("tm")
+install.packages("wordcloud")
+install.packages("SnowballC")
+install.packages("qdap")
+install.packages("openNLP")
+install.packages("data.table")
+install.packages("SentimentAnalysis")
+install.packages("gmodels")
+install.packages("e1071")
+
 library(dotenv)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(e1071)
 library(tidytext)
 library(tidyverse)
 library(wordcloud)
@@ -13,12 +34,13 @@ library(SnowballC)
 library(qdap)
 library(data.table)
 library(SentimentAnalysis)
+library(gmodels)
 
 # used for positive and negative words https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html
+#location="C:/Users/Jin/Documents/Stock Twitter Analysis Project/stock-twitter-analysis-project"
+location = "/home/jin/Dropbox/2020 Course/Modules/Project/stock-twitter-analysis-project"
 
-install.packages("qdap")
-
-# load configuration
+## load configuration
 load_dot_env("config.env")
 
 # get location from config file
@@ -29,7 +51,7 @@ setwd(location)
 
 #### Sentimental Analysis ####
 tweets_location = paste0(location, "/tweets")
-
+getwd()
 # set location
 setwd(tweets_location)
 
@@ -337,7 +359,7 @@ write.csv(tweets_sentiment_score_v2, "tweets_sentiment_score_updated_v2.csv", ro
 # create term document matrix for QDAP method
 tweet_clean_corpus = read.csv("tweets_sentiment_score_updated.csv")
 tweets_sentiment_score_v2 = read.csv("tweets_sentiment_score_updated_v2.csv")
-tweet_clean_corpus = Corpus(VectorSource(tweet_clean_corpus$text))
+tweet_clean_corpus = Corpus(VectorSource(tweet_clean_corpus$text[1:30000]))
 tweet_clean_corpus_dtm <- DocumentTermMatrix(tweet_clean_corpus)
 
 head(tweet_clean_corpus_dtm)
@@ -367,17 +389,20 @@ colnames(sparse_tweets) <- make.names(colnames(sparse_tweets))
 
 # Data will be divided into an 30% for testing purposes and 70% for training
 
-raw_length <- nrow(tweets_sentiment_score_v2)
+raw_length = nrow(tweets_sentiment_score_v2)
+raw_length = 30000
 raw_tweets_train = tweets_sentiment_score_v2[1:round(.7 * raw_length),]
 raw_tweets_test  = tweets_sentiment_score_v2[(round(.7 * raw_length)+1):raw_length,]
 
 
-tweet_clean_length <- length(tweet_clean_corpus)
+tweet_clean_length = length(tweet_clean_corpus)
+tweet_clean_length = 30000
 tweet_clean_corpus_train = tweet_clean_corpus[1:round(.7 * tweet_clean_length)]
 tweet_clean_corpus_test  = tweet_clean_corpus[(round(.7 * tweet_clean_length)+1):tweet_clean_length]
 
 
-length_corpus <- nrow(tweet_clean_corpus_dtm)
+length_corpus = nrow(tweet_clean_corpus_dtm)
+length_corpus = 30000
 tweet_clean_corpus_dtm_train = tweet_clean_corpus_dtm[1:round(.7 * length_corpus),]
 tweet_clean_corpus_dtm_test  = tweet_clean_corpus_dtm[(round(.7 * length_corpus)+1):length_corpus,]
 
@@ -420,8 +445,16 @@ memory.limit(size = 60000)
 #apply the function created to the columns for test/train
 freq_clean_corpus_dtm_train = apply(freq_clean_corpus_dtm_train, 2, conv_count_to_factor)
 freq_clean_corpus_dtm_test = apply(freq_clean_corpus_dtm_test, 2, conv_count_to_factor)
+freq_clean_corpus_dtm_train
+# Create model forprediction
+nb_classifier <- naiveBayes(freq_clean_corpus_dtm_train, raw_tweets_train$reaction)
+nb.pred <- predict(nb_classifier, freq_clean_corpus_dtm_test)
 
-warnings()
+CrossTable(nb.pred, raw_tweets_test$tweets_to_analyse2
+           ,
+           prop.chisq = FALSE, 
+           prop.t = FALSE,
+           dnn = c('predicted', 'actual'))
 ###############################################################
 
 #### Time Series Analysis ####
