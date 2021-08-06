@@ -1,4 +1,5 @@
 library(dotenv)
+library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(tidytext)
@@ -32,7 +33,7 @@ tweets_location = paste0(location, "/tweets")
 # set location
 setwd(tweets_location)
 
-# read file to be analyse for setiment
+# read file to be analyse for sentiment
 tweets = read.csv("tweets_separated.csv", colClasses = c("character",  "character", "character", "character", 
                                                      "numeric", "numeric", "character", 
                                                      "numeric", "numeric", "numeric"))
@@ -70,11 +71,10 @@ tweet_lists
 ########################## Tweets strip of unnecessary stuff #####################################
 tweets_cleaned = tweets
 
-positive_words = scan('positive-words.txt',what = 'character')
-negative_words = scan('negative-words.txt',what = 'character')
 # tweets strip of unnecessary stuff
 tweets_cleaned = tweets
 raw_tweets = tweets
+raw_tweets_cleaned = raw_tweets
 
 # removing unnecessary text using gsub prior to creating corpus
 tweets_cleaned$Text = gsub("http\\S+","",tweets_cleaned$Text)
@@ -84,13 +84,37 @@ tweets_cleaned$Text = gsub("@#","",tweets_cleaned$Text)
 tweets_cleaned$Text = gsub("\\s*\\$\\w*","",tweets_cleaned$Text)
 tweets_cleaned$Text = gsub("\\s*\\#\\w*","",tweets_cleaned$Text)
 tweets_cleaned$Text = gsub("\\s*\\@\\w*","",tweets_cleaned$Text)
+tweets_cleaned$Text = gsub("[\r\n]","",tweets_cleaned$Text) 
+tweets_cleaned$Text = gsub("[[:punct:]]","",tweets_cleaned$Text)
 tweets_cleaned$Text = iconv(tweets_cleaned$Text, "latin1", "ASCII", sub="") #emojis
 tweets_cleaned$Text = gsub("^[[:space:]]*","",tweets_cleaned$Text) # Remove leading whitespaces
 tweets_cleaned$Text = gsub("[[:space:]]*$","",tweets_cleaned$Text) # Remove trailing whitespaces
 tweets_cleaned$Text = gsub(" +"," ", tweets_cleaned$Text) # remove extra whitespaces
 tweets_cleaned$Text =  gsub("  ", " ", tweets_cleaned$Text) #Replace double space with single space
 
-tweets_cleaned$Text[500:505]
+raw_tweets_cleaned$Text = gsub("http\\S+","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("&\\S+","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("\\d+","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("@#","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("\\s*\\$\\w*","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("\\s*\\#\\w*","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("\\s*\\@\\w*","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("[\r\n]","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = gsub("[[:punct:]]","",raw_tweets_cleaned$Text)
+raw_tweets_cleaned$Text = iconv(raw_tweets_cleaned$Text, "latin1", "ASCII", sub="") #emojis
+raw_tweets_cleaned$Text = gsub("^[[:space:]]*","",raw_tweets_cleaned$Text) # Remove leading whitespaces
+raw_tweets_cleaned$Text = gsub("[[:space:]]*$","",raw_tweets_cleaned$Text) # Remove trailing whitespaces
+raw_tweets_cleaned$Text = gsub(" +"," ", raw_tweets_cleaned$Text) # remove extra whitespaces
+raw_tweets_cleaned$Text =  gsub("  ", " ", raw_tweets_cleaned$Text) #Replace double space with single space
+
+# remove duplicates for both raw_tweets_cleaned and tweets_cleaned
+raw_tweets_cleaned = raw_tweets_cleaned[!duplicated(raw_tweets_cleaned$Text),]
+tweets_cleaned = tweets_cleaned[!duplicated(tweets_cleaned$Text),]
+
+length(raw_tweets_cleaned$Text)
+length(tweets_cleaned$Text)
+#[1] 190023
+
 ##########################Test 1 Naive Bayes#####################################
 # create corpus of tweets
 tweet_corpus = Corpus(VectorSource(tweets_cleaned$Text))
@@ -107,8 +131,6 @@ tweet_clean_corpus <- tm_map(tweet_corpus, tolower)
 length(tweet_clean_corpus)
 #[1] 327689
 
-inspect(tweet_clean_corpus[1:5])
-
 # remove numbers
 tweet_clean_corpus = tm_map(tweet_clean_corpus, removeNumbers)
 
@@ -116,7 +138,7 @@ tweet_clean_corpus = tm_map(tweet_clean_corpus, removeNumbers)
 tweet_clean_corpus = tm_map(tweet_clean_corpus, stripWhitespace)
 
 # remove stop words
-my_stopwords = c("day", "will","week","time","today","stock","trade","call","go","look","get")
+my_stopwords = c("day", "will","week","time","today","stock","trade","call","go","look","get", "will")
 # "","","","","","",""
 tweet_clean_corpus = tm_map(tweet_clean_corpus, removeWords, c(stopwords("english"), my_stopwords))
 
@@ -139,50 +161,53 @@ tweets_to_analyse = tweets_cleaned$text
 
 # sentiment analysis using SentimentAnalysis package and return sentiment scores
 # Break it down to smaller scale to prevent not having enough memory
-limit = 27689
-tweets_sentiment1 = analyzeSentiment(tweets_to_analyse[1:limit])
-limit2 = limit + 50000
-tweets_sentiment2 = analyzeSentiment(tweets_to_analyse[(limit+1):limit2])
-limit3 = limit2 + 50000 
-tweets_sentiment3 = analyzeSentiment(tweets_to_analyse[(limit2+1):limit3])
-limit4 = limit3 + 50000 
-tweets_sentiment4 = analyzeSentiment(tweets_to_analyse[(limit3+1):limit4])
-limit5 = limit4 + 50000
-tweets_sentiment5 = analyzeSentiment(tweets_to_analyse[(limit4+1):limit5])
-limit6 = limit5 + 50000
-tweets_sentiment6 = analyzeSentiment(tweets_to_analyse[(limit5+1):limit6])
-limit7 = limit6 + 50000
-tweets_sentiment7 = analyzeSentiment(tweets_to_analyse[(limit6+1):limit7])
+limit = 40000
+tweets_sentiment1 = analyzeSentiment(tweets_to_analyse[1:limit]) # 1 - 40000
+limit2 = limit + 40000
+tweets_sentiment2 = analyzeSentiment(tweets_to_analyse[(limit+1):limit2]) # 40001 - 80000
+limit3 = limit2 + 40000 
+tweets_sentiment3 = analyzeSentiment(tweets_to_analyse[(limit2+1):limit3]) # 80001 - 120000
+limit4 = limit3 + 40000 
+tweets_sentiment4 = analyzeSentiment(tweets_to_analyse[(limit3+1):limit4]) # 120001 - 160000
+limit5 = limit4 + 30023 
+tweets_sentiment5 = analyzeSentiment(tweets_to_analyse[(limit4+1):limit5]) # 160001 - 190023
 
 # Checking if row is not enough
-totalrows = nrow(tweets_sentiment) + nrow(tweets_sentiment2) + nrow(tweets_sentiment3) + nrow(tweets_sentiment4)+
-  nrow(tweets_sentiment5) + nrow(tweets_sentiment6) + nrow(tweets_sentiment7)
+totalrows = nrow(tweets_sentiment1) + nrow(tweets_sentiment2) + nrow(tweets_sentiment3) + nrow(tweets_sentiment4)+ nrow(tweets_sentiment5)
+totalrows
 
 # bind everything through caret for the sentiment score
-tweets_sentiment_score = c(tweets_sentiment1$SentimentQDAP, tweets_sentiment2$SentimentQDAP, 
-                               tweets_sentiment3$SentimentQDAP, tweets_sentiment4$SentimentQDAP,
-                               tweets_sentiment5$SentimentQDAP, tweets_sentiment6$SentimentQDAP,
-                               tweets_sentiment7$SentimentQDAP)
+tweets_sentiment_score1 = c(tweets_sentiment1$SentimentQDAP, tweets_sentiment2$SentimentQDAP, 
+                            tweets_sentiment3$SentimentQDAP, tweets_sentiment4$SentimentQDAP,      
+                            tweets_sentiment5$SentimentQDAP)
 
 # get the sentiment value for each score
-tweet_sentiment_value = convertToDirection(tweets_sentiment_score)
+tweet_sentiment_value1 = convertToDirection(tweets_sentiment_score)
 
 # bind this back to the tweets cleaned
-tweets_cleaned = cbind(tweets_cleaned, tweets_sentiment_score, tweet_sentiment_value)
+tweets_cleaned = cbind(tweets_cleaned, tweets_sentiment_score1, tweet_sentiment_value1)
 head(tweets_cleaned)
 
 # save file
 write.csv(tweets_cleaned, "tweets_sentiment_score.csv", row.names = FALSE)
 
+
+# compare with using positive/negative  word lists for sentiment from using QDAP vs list of words
 tweets_sentiment_score = read.csv("tweets_sentiment_score.csv")
 
+# scan provided positive/negative words set list
 positive_words = scan('positive-words.txt',what = 'character')
 negative_words = scan('negative-words.txt',what = 'character')
 
+# add other words that can help identify positive/negative sentiments
 positive_words = c(positive_words, "buy", "rising", "rip")
 negative_words = c(negative_words, "sell", "dip", "crash")
 
-tweets_to_analyse2 = tweets_to_analyse2$text
+tweets_to_analyse2 = raw_tweets_cleaned$Text
+
+length(raw_tweets_cleaned$Text)
+# [1] 190023
+
 # Use multicore to speed up process
 c = detectCores()
 # avoid overload buy only using maximum - 1 cores available
@@ -195,8 +220,7 @@ start <- proc.time()
 # set score 
 score = c()
 
-# the for loop uses multicore and uses the package stringr to remove the "+00:00" pattern on each item
-result1 = foreach(i=1:87689, .packages = c("data.table", "stringr")) %dopar% {
+result1 = foreach(i=1:40000, .packages = c("data.table", "stringr")) %dopar% {
   tmp_pos = 0
   tmp_neg = 0
   
@@ -213,7 +237,7 @@ result1 = foreach(i=1:87689, .packages = c("data.table", "stringr")) %dopar% {
   score = tmp_pos - tmp_neg
 }
 
-result2 = foreach(i=(87689+1):147690, .packages = c("data.table", "stringr")) %dopar% {
+result2 = foreach(i=(40000+1):80000, .packages = c("data.table", "stringr")) %dopar% {
   tmp_pos = 0
   tmp_neg = 0
   
@@ -227,7 +251,7 @@ result2 = foreach(i=(87689+1):147690, .packages = c("data.table", "stringr")) %d
   score = tmp_pos- tmp_neg
 }
 
-result3 = foreach(i=(147690+1):207691, .packages = c("data.table", "stringr")) %dopar% {
+result3 = foreach(i=(80000+1):120000, .packages = c("data.table", "stringr")) %dopar% {
   tmp_pos = 0
   tmp_neg = 0
   
@@ -241,7 +265,7 @@ result3 = foreach(i=(147690+1):207691, .packages = c("data.table", "stringr")) %
   score = tmp_pos - tmp_neg
 }
 
-result4 = foreach(i=(207691+1):267692, .packages = c("data.table", "stringr")) %dopar% {
+result4 = foreach(i=(120000+1):160000, .packages = c("data.table", "stringr")) %dopar% {
   tmp_pos = 0
   tmp_neg = 0
   
@@ -255,7 +279,7 @@ result4 = foreach(i=(207691+1):267692, .packages = c("data.table", "stringr")) %
   score = tmp_pos - tmp_neg
 }
 
-result5 = foreach(i=(267692+1):327689, .packages = c("data.table", "stringr")) %dopar% {
+result5 = foreach(i=(160000+1):190023, .packages = c("data.table", "stringr")) %dopar% {
   tmp_pos = 0
   tmp_neg = 0
   
@@ -275,6 +299,8 @@ stopCluster(cores_to_use)
 # Subtract time to find out how long it took to run
 time_it_took <- proc.time()-start
 time_it_took
+#   user  system elapsed 
+# 47.73   10.56   64.42 
 
 # combine the results into a total
 total = unlist(c(result1, result2, result3, result4, result5))
@@ -298,25 +324,32 @@ tweet_sentiment_score2 = total
 tweet_sentiment_value2 = reaction
 
 # add columns to the sentiment score and value
-tweets_sentiment_score$tweet_sentiment_score2 = tweet_sentiment_score2
-tweets_sentiment_score$tweet_sentiment_value2 = tweet_sentiment_value2
+tweets_sentiment_score_v2$tweet_sentiment_score2 = tweet_sentiment_score2
+tweets_sentiment_score_v2$tweet_sentiment_value2 = tweet_sentiment_value2
 
-# rename for clarity
-names(tweets_sentiment_score[2]) = "tweet_sentiment_score1"
-names(tweets_sentiment_score[3]) = "tweet_sentiment_value1"
+tweets_sentiment_score_v2 = as.data.frame(cbind(tweets_to_analyse2,total, reaction))
+tweets_sentiment_score_v2$total = as.numeric(tweets_sentiment_score_v2$total)
 
 # save file
-write.csv(tweets_sentiment_score, "tweets_sentiment_score_updated.csv")
+write.csv(tweets_sentiment_score, "tweets_sentiment_score_updated.csv", row.names = FALSE)
+write.csv(tweets_sentiment_score_v2, "tweets_sentiment_score_updated_v2.csv", row.names = FALSE)
 
-# create term document matrix
+# create term document matrix for QDAP method
+tweet_clean_corpus = read.csv("tweets_sentiment_score_updated.csv")
+tweets_sentiment_score_v2 = read.csv("tweets_sentiment_score_updated_v2.csv")
+tweet_clean_corpus = Corpus(VectorSource(tweet_clean_corpus$text))
 tweet_clean_corpus_dtm <- DocumentTermMatrix(tweet_clean_corpus)
 
 head(tweet_clean_corpus_dtm)
 
 # get top 10 most frequent words
-term_count <- freq_terms(tweet_clean_corpus, 10)
+freq_words_corp <- freq_terms(tweet_clean_corpus, 10)
 # plot to see them
 plot(term_count)
+p<-ggplot(freq_words_corp, aes(x=FREQ, y=WORD, fill = FREQ)) + 
+  xlab("Count") + ylab("Word") + labs(fill="Frequency") + 
+  geom_bar(stat="identity")
+p
 
 # get lowest frequency words that appear
 low_freq_20 <- findFreqTerms(tweet_clean_corpus_dtm, lowfreq = 20)
@@ -330,46 +363,66 @@ sparse_tweets <- as.data.frame(as.matrix(sparse_tweet_clean_corpus_dtm))
 
 colnames(sparse_tweets) <- make.names(colnames(sparse_tweets))
 
+#### training and test datasets for QDAP method ####
+
+# Data will be divided into an 30% for testing purposes and 70% for training
+
+raw_length <- nrow(tweets_sentiment_score_v2)
+raw_tweets_train = tweets_sentiment_score_v2[1:round(.7 * raw_length),]
+raw_tweets_test  = tweets_sentiment_score_v2[(round(.7 * raw_length)+1):raw_length,]
 
 
-#### training and test datasets ####
-
-n <- nrow(raw_tweets)
-raw_tweets_train <- raw_tweets[1:round(.8 * n),]
-raw_tweets_test  <- raw_tweets[(round(.8 * n)+1):n,]
+tweet_clean_length <- length(tweet_clean_corpus)
+tweet_clean_corpus_train = tweet_clean_corpus[1:round(.7 * tweet_clean_length)]
+tweet_clean_corpus_test  = tweet_clean_corpus[(round(.7 * tweet_clean_length)+1):tweet_clean_length]
 
 
-nn <- length(tweet_clean_corpus)
-tweet_clean_corpus_train <- tweet_clean_corpus[1:round(.8 * nn)]
-tweet_clean_corpus_test  <- tweet_clean_corpus[(round(.8 * nn)+1):nn]
+length_corpus <- nrow(tweet_clean_corpus_dtm)
+tweet_clean_corpus_dtm_train = tweet_clean_corpus_dtm[1:round(.7 * length_corpus),]
+tweet_clean_corpus_dtm_test  = tweet_clean_corpus_dtm[(round(.7 * length_corpus)+1):length_corpus,]
 
 
-nnn <- nrow(tweet_clean_corpus_dtm)
-tweet_clean_corpus_dtm_train <- tweet_clean_corpus_dtm[1:round(.8 * nnn),]
-tweet_clean_corpus_dtm_test  <- tweet_clean_corpus_dtm[(round(.8 * nnn)+1):nnn,]
-
-
-# create a word cloud
+# Create a word cloud to show the frequency of the data we have set the frequency to 2000
 dev.new(width = 1000, height = 1000, unit = "px")
 wordcloud(tweet_clean_corpus_train, min.freq = 2000, random.order = FALSE, scale = c(3, 0.5))
+
+
+# Create a word clouds specific to negative and positive
+positive_tweets = subset(raw_tweets_train, reaction == "positive")
+negative_tweets = subset(raw_tweets_train, reaction == "negative")
+
+# word cloud for positive tweets
+wordcloud(positive_tweets$tweets_to_analyse2, min.freq = 2000, random.order = FALSE, scale = c(3, 0.5))
+
+# word cloud for positive tweets
+wordcloud(negative_tweets$tweets_to_analyse2, min.freq = 3000, random.order = FALSE, scale = c(3, 0.5))
+
+# Reduce the number of features that eliminate any words that show in less than two texts. 
+frequent_terms = findFreqTerms(tweet_clean_corpus_dtm_train, 2)
+freq_clean_corpus_dtm_train = DocumentTermMatrix(tweet_clean_corpus_train, list(dictionary = frequent_terms))
+freq_clean_corpus_dtm_test = DocumentTermMatrix(tweet_clean_corpus_test, list(dictionary = frequent_terms))
+
+
+# create a function that will counting will be converted to a yes or no
+conv_count_to_factor = function(i) {
+  i = ifelse(i > 0, "Yes", "No")
+}
+
+remove(result1)
+remove(result2)
+remove(result3)
+remove(result4)
+remove(result5)
+
+gc()
+memory.limit(size = 60000)
+
+#apply the function created to the columns for test/train
+freq_clean_corpus_dtm_train = apply(freq_clean_corpus_dtm_train, 2, conv_count_to_factor)
+freq_clean_corpus_dtm_test = apply(freq_clean_corpus_dtm_test, 2, conv_count_to_factor)
+
 warnings()
-
-
-# sentiments
-positive = subset(raw_tweets_train, sentiment == "Positive")
-
-test = read.csv("tweets.csv")
-
-nrow(test)
-
-nrow(tweets_sentiment_score)
-nrow(test)
-
-sapply(test, class)
-
-head(test)
 ###############################################################
-
 
 #### Time Series Analysis ####
 
